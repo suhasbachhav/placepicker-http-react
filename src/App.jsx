@@ -5,6 +5,8 @@ import Modal from './components/Modal.jsx';
 import DeleteConfirmation from './components/DeleteConfirmation.jsx';
 import logoImg from './assets/logo.png';
 import AvailablePlaces from './components/AvailablePlaces.jsx';
+import { updateUserPlaces } from './http.js';
+import Error from './components/Error.jsx';
 
 function App() {
   const selectedPlace = useRef();
@@ -12,6 +14,7 @@ function App() {
   const [userPlaces, setUserPlaces] = useState([]);
 
   const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [errorOnUpdate, setErrorOnUpdate] = useState();
 
   function handleStartRemovePlace(place) {
     setModalIsOpen(true);
@@ -22,7 +25,7 @@ function App() {
     setModalIsOpen(false);
   }
 
-  function handleSelectPlace(selectedPlace) {
+  async function handleSelectPlace(selectedPlace) {
     setUserPlaces((prevPickedPlaces) => {
       if (!prevPickedPlaces) {
         prevPickedPlaces = [];
@@ -32,6 +35,13 @@ function App() {
       }
       return [selectedPlace, ...prevPickedPlaces];
     });
+    try {
+      await updateUserPlaces(selectedPlace, ...userPlaces);
+    } catch (error) {
+      setUserPlaces(userPlaces);
+      setErrorOnUpdate(error.message || 'Failed to update user places.');
+    }
+    
   }
 
   const handleRemovePlace = useCallback(async function handleRemovePlace() {
@@ -39,11 +49,23 @@ function App() {
       prevPickedPlaces.filter((place) => place.id !== selectedPlace.current.id)
     );
 
+    try {
+      await updateUserPlaces(userPlaces.filter(places => places.id !== selectedPlace.current.id));
+    } catch (error) {
+      setUserPlaces(userPlaces);
+      setErrorOnUpdate(error.message || 'Failed to update user places.');
+      
+    }
+    
+
     setModalIsOpen(false);
-  }, []);
+  }, [userPlaces]);
 
   return (
     <>
+      <Modal open={errorOnUpdate} onClose={() => setErrorOnUpdate(null)}>
+        {errorOnUpdate && <Error title="Failed to update user places" message={errorOnUpdate.message} />}
+      </Modal>
       <Modal open={modalIsOpen} onClose={handleStopRemovePlace}>
         <DeleteConfirmation
           onCancel={handleStopRemovePlace}
